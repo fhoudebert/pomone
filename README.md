@@ -24,8 +24,6 @@ Les binaires ne sont pas signés : au premier lancement, Windows (SmartScreen) e
 npm ci
 npm run pomone -- build exemples/verger-pomone-v1.xlsx -o site          # dossier de pages
 npm run pomone -- build exemples/verger-pomone-v1.xlsx -o site --unique # un seul verger.html
-npm run pomone -- check exemples/verger-pomone-ebauche.xlsx             # rapport d'anomalies
-npm run pomone -- convert exemples/verger-pomone-ebauche.xlsx -o v1.xlsx
 npm run pomone -- modele -o mon-verger.xlsx                             # classeur vierge
 ```
 

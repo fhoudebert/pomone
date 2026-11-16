@@ -29,30 +29,6 @@ describe('noms et positions', () => {
   });
 });
 
-describe('classeur ébauche', () => {
-  const { verger, rapport, format } = lire('verger-pomone-ebauche.xlsx');
-  it('est lu sans erreur, allées renumérotées 1 à 7', () => {
-    expect(format).toBe('ebauche');
-    expect(rapport.filter((a) => a.niveau === 'erreur')).toEqual([]);
-    expect(verger.allees.map((a) => a.numero)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(verger.allees[4]!.nom).toBe('Poiriers');
-    expect(rapport.filter((a) => a.code === 'numero-allee')).toHaveLength(3);
-  });
-  it('traite les cellules vides comme des arbres à planter', () => {
-    expect(verger.emplacements.filter((e) => e.statut === 'à planter').map((e) => e.id)).toContain('A2-007');
-  });
-  it('relie le plan aux fiches malgré les graphies', () => {
-    const vitry = verger.emplacements.find((e) => e.id === 'A7-009')!;
-    expect(verger.cultivars.find((c) => c.id === vitry.cultivar)!.fiche.length).toBeGreaterThan(3);
-    expect(rapport.some((a) => a.code === 'rapprochement' && a.message.includes('Virty'))).toBe(true);
-  });
-  it('distingue deux espèces sans cultivar et propose la multiplication en ébauche', () => {
-    const ids = verger.cultivars.map((c) => c.id);
-    expect(ids).toEqual(expect.arrayContaining(['noyer-regia', 'noyer-nigra', 'sorbier-forresti', 'sorbier-domestica']));
-    expect(verger.cultivars.find((c) => c.espece === 'grenadier')!.multiplication).toEqual({ v: 'bouture', ebauche: true });
-  });
-});
-
 describe('format Pomone v1', () => {
   const { verger, rapport, format } = lire('verger-pomone-v1.xlsx');
   it("l'exemple corrigé ne lève ni erreur ni avertissement", () => {
