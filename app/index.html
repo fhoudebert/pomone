@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="./logo.png" />
+    <title>Pomone</title>
+  </head>
+  <body>
+    <header>
+      <img src="./logo.png" alt="" width="48" height="48" />
+      <div>
+        <h1>Pomone</h1>
+        <p>Du classeur du verger aux pages HTML, hors ligne.</p>
+      </div>
+      <button id="modele" type="button">Créer un classeur vierge…</button>
+    </header>
+    <main>
+      <section id="depot" tabindex="0" role="button" aria-label="Choisir le classeur du verger">
+        <p><strong>Déposez le classeur du verger ici</strong> <br />ou cliquez pour le choisir (.xlsx, .xls, .ods)</p>
+        <input id="fichier" type="file" accept=".xlsx,.xls,.ods" hidden />
+      </section>
+      <section id="resultat" hidden>
+        <div id="resume"></div>
+        <div class="actions">
+          <button id="exporter-dossier" type="button" class="principal">Exporter le dossier HTML…</button>
+          <button id="exporter-unique" type="button">Exporter un fichier unique…</button>
+          <button id="exporter-v1" type="button">Enregistrer au format Pomone v1…</button>
+          <label><input id="opt-rapport" type="checkbox" /> joindre le rapport</label>
+          <label><input id="opt-ebauches" type="checkbox" /> masquer les ébauches</label>
+          <label title="Le logo Pomone est sous licence CC BY-NC-SA 3.0 (usage non commercial)"><input id="opt-logo" type="checkbox" /> sans logo</label>
+        </div>
+        <p id="message" role="status"></p>
+        <details id="rapport"><summary>Rapport d'import</summary><ul id="anomalies"></ul></details>
+        <iframe id="apercu" title="Aperçu du verger" sandbox="allow-scripts"></iframe>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
