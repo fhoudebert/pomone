@@ -73,6 +73,6 @@ contributions arrivent par séries de patchs : voir [docs/contribuer.md](docs/co
 
 ## Licence
 
-Code, documentation et exemples : MIT — Copyright (c) 2026 François Houdebert.
-Logo et icônes : © François Houdebert, CC BY-NC-SA 3.0, voir [LOGO-LICENCE.md](LOGO-LICENCE.md).
+Code, documentation et exemples : MIT 
+Logo et icônes :CC BY-NC-SA 3.0, voir [LOGO-LICENCE.md](LOGO-LICENCE.md).
 Dépendances : voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
