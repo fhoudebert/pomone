@@ -216,7 +216,7 @@ ${tri.map((x) => `<tr><td class="niveau-${x.niveau}">${x.niveau}</td><td>${esc(x
 <nav aria-label="Pages">${nav.map(([k, l, h]) => `<a href="${esc(h)}"${k === courant ? ' aria-current="page"' : ''}>${l}</a>`).join('')}</nav></header>
 <main>${corps}</main>
 <aside id="panneau" hidden aria-label="Fiche"><button type="button" class="fermer" aria-label="Fermer la fiche">Fermer ✕</button><div id="panneau-contenu" aria-live="polite"></div></aside>
-<footer>${esc(this.v.nom)}${this.v.auteur ? ` · ${esc(this.v.auteur)}` : ''} · allées orientées à ${nb} du nord${this.o.date ? ` · généré le ${esc(this.o.date)}` : ''} · réalisé avec Pomone${logo ? ' · logo : François Houdebert, CC BY-NC-SA 3.0' : ''}</footer>
+<footer>${esc(this.v.nom)}${this.v.auteur ? ` · ${esc(this.v.auteur)}` : ''} · allées orientées à ${nb} du nord${this.o.date ? ` · généré le ${esc(this.o.date)}` : ''} · réalisé avec Pomone${logo ? ' · logo : CC BY-NC-SA 3.0' : ''}</footer>
 <script>${SCRIPT}</script></body></html>
 `;
   }
