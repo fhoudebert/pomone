@@ -15,7 +15,7 @@
     "test:e2e": "tsx e2e/pages.ts",
     "licences": "node outils/licences.mjs",
     "typecheck": "tsc --noEmit",
-    "exemple": "tsx packages/cli/src/pomone.ts build exemples/verger-pomone-v2.xlsx -o site --unique",
+    "exemple": "tsx packages/cli/src/pomone.ts build exemples/verger-arboretum.xlsx -o site --unique",
     "tauri": "tauri"
   },
   "dependencies": {

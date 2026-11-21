@@ -2,8 +2,7 @@
 
 Un classeur `.xlsx`, `.xls` ou `.ods` avec six feuilles à noms fixes. La première ligne de chaque
 feuille porte les noms de colonnes. `exemples/modele-pomone-v1.xlsx` est un classeur vierge (aussi créé par l'application ou par
-`pomone modele`) ; `exemples/verger-pomone-v2.xlsx` est un verger complet (deuxième
-édition du verger de l'arboretum, toujours au format v1). Les classeurs écrits par
+`pomone modele`) ; `exemples/verger-arboretum.xlsx` est un verger complet. Les classeurs écrits par
 Pomone proposent des listes déroulantes (statut, strate, multiplication, type d'idée) et une feuille `aide`.
 
 ## Ébauches

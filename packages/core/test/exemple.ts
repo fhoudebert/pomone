@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { estActif, lireClasseur, trierEmplacements, type Cultivar, type Emplacement, type Lecture } from '../src/index';
 
-export const EXEMPLE = 'exemples/verger-pomone-v2.xlsx';
+export const EXEMPLE = 'exemples/verger-arboretum.xlsx';
 
 export const lireExemple = (): Lecture => lireClasseur(new Uint8Array(readFileSync(EXEMPLE)));
 

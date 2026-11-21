@@ -22,8 +22,8 @@ Les binaires ne sont pas signés : au premier lancement, Windows (SmartScreen) e
 
 ```sh
 npm ci
-npm run pomone -- build exemples/verger-pomone-v2.xlsx -o site          # dossier de pages
-npm run pomone -- build exemples/verger-pomone-v2.xlsx -o site --unique # un seul verger.html
+npm run pomone -- build exemples/verger-arboretum.xlsx -o site          # dossier de pages
+npm run pomone -- build exemples/verger-arboretum.xlsx -o site --unique # un seul verger.html
 npm run pomone -- modele -o mon-verger.xlsx                             # classeur vierge
 ```
 
@@ -63,7 +63,7 @@ npm run tauri dev   # application de bureau (Rust et dépendances Tauri requis)
 | `packages/cli` | ligne de commande |
 | `app` | interface de l'application |
 | `src-tauri` | hôte Tauri (Rust) : dialogues et écriture des fichiers |
-| `exemples` | verger de l'arboretum (`verger-pomone-v2.xlsx`), modèle vierge |
+| `exemples` | verger de l'arboretum (`verger-arboretum.xlsx`), modèle vierge |
 | `e2e`, `outils` | essais en navigateur, contrôle des licences |
 
 Le build des binaires se lance à la main (GitHub Actions, `workflow_dispatch`) ; les
