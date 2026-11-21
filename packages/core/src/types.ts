@@ -5,6 +5,11 @@ export const MODES_MULTIPLICATION = ['greffage', 'semis', 'bouture', 'marcotte',
 export const STATUTS = ['planté', 'à planter', 'remplacé', 'mort', 'retiré'] as const;
 export const STRATES = ['arbre', 'arbuste', 'petit fruit', 'plante basse'] as const;
 export const TYPES_IDEE = ['remplacement', 'évolution', 'plante intercalaire'] as const;
+/** Un rang est une allée (verticale sur le plan) ou une haie, posée sur un côté des allées. */
+export const TYPES_RANG = ['allée', 'haie'] as const;
+export const COTES = ['haut', 'bas', 'gauche', 'droite'] as const;
+/** Distance par défaut entre une haie et le bout des allées (haut, bas) ou l'allée voisine (gauche, droite). */
+export const DISTANCE_HAIE = 10;
 
 export interface Cultivar {
   id: string;
@@ -44,7 +49,16 @@ export interface Allee {
   numero: number;
   nom: string;
   espacementDefaut: Champ;
+  /** « allée » ou « haie ». */
+  type: string;
+  /** Côté d'une haie : haut, bas, gauche, droite (haut si vide). Ignoré pour une allée. */
+  cote: string;
+  /** Distance d'une haie au rang voisin, en mètres ; null = DISTANCE_HAIE. */
+  distance: Champ | null;
 }
+
+export const estHaie = (a: Allee): boolean => a.type === 'haie';
+export const coteDe = (a: Allee): (typeof COTES)[number] => ((COTES as readonly string[]).includes(a.cote) ? a.cote : 'haut') as (typeof COTES)[number];
 
 export interface Idee { allee: string; type: string; sujet: string; emplacement: string; priorite: string; remarque: string }
 

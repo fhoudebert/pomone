@@ -37,7 +37,7 @@ Mode d'emploi complet : [docs/guide-utilisateur.md](docs/guide-utilisateur.md).
 | Feuille | Contenu |
 | --- | --- |
 | `verger` | nom, lieu, `nord_deg` (azimut des allées), écart entre allées |
-| `allees` | une ligne par allée ; les allées sont toujours dessinées verticales |
+| `allees` | une ligne par allée, toujours dessinée verticale, ou par haie, posée sur un côté des allées |
 | `emplacements` | une ligne par plante : identifiant fixe, allée, position (`1`, `2`, `1.1`…), cultivar, statut |
 | `cultivars` | nom latin, cultivar, nom vernaculaire, multiplication, description, colonnes libres |
 | `idees` | idées par allée : remplacement, évolution, plante intercalaire |

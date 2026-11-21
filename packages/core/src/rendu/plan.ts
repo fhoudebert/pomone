@@ -1,51 +1,83 @@
 import { especeParCle } from '../especes';
 import { estActif, trierEmplacements } from '../lecture';
 import { nombre, plat } from '../normaliser';
-import type { Cultivar, Decoration, Emplacement, Verger } from '../types';
+import { type Allee, type Cultivar, type Decoration, type Emplacement, type Verger, DISTANCE_HAIE, coteDe, estHaie } from '../types';
 
 export const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export const LETTRES: Record<string, string> = { greffage: 'G', semis: 'S', bouture: 'B', marcotte: 'M', drageon: 'D' };
 
 export interface Place { e: Emplacement; x: number; y: number; r: number }
-export interface Disposition { places: Place[]; largeur: number; hauteur: number; ecart: number; xAllee: Map<string, number> }
+/** Ligne d'une haie sur le plan, en mètres, de son début (position 1) à sa fin. */
+export interface Bande { haie: Allee; cote: string; x1: number; y1: number; x2: number; y2: number; vide: boolean }
+export interface Disposition { places: Place[]; largeur: number; hauteur: number; ecart: number; xAllee: Map<string, number>; bandes: Bande[] }
 
 const RAYONS: Record<string, number> = { arbuste: 1.1, 'petit fruit': 0.7, 'plante basse': 0.45 };
 
+/** « Haie — Petits fruits », ou le nom seul s'il commence déjà par « haie ». */
+export const nomHaie = (a: Allee): string => (/^haies?\b/i.test(a.nom) ? a.nom : `Haie — ${a.nom || a.id}`);
+
+/** Plantes actives d'un rang, à leur distance du début du rang (en mètres), avec le rayon de leur couronne. */
+function rang(v: Verger, a: Allee, ecart: number): { items: { e: Emplacement; t: number; r: number }[]; longueur: number } {
+  const def = nombre(a.espacementDefaut.v) ?? 5;
+  const rArbre = Math.min(0.36 * def, 0.42 * ecart, 2.4);
+  const items: { e: Emplacement; t: number; r: number }[] = [];
+  let t = 0, prec: Emplacement | null = null;
+  for (const e of trierEmplacements(v.emplacements.filter((p) => p.allee === a.id && estActif(p.statut)))) {
+    // Sans espacement saisi : celui du rang entre deux plantes de même strate, la moitié quand la strate change
+    // (plante basse intercalée entre deux arbres).
+    const pas = nombre(e.espacement?.v) ?? def * (prec && e.strate !== prec.strate ? 0.5 : 1);
+    t += prec ? pas : def / 2;
+    items.push({ e, t, r: RAYONS[e.strate] ?? rArbre });
+    prec = e;
+  }
+  // Des plantes plus serrées que l'espacement par défaut ont des couronnes plus petites : elles ne se chevauchent pas.
+  items.forEach((p, i) => {
+    const ecarts = [items[i - 1], items[i + 1]].filter((q) => !!q).map((q) => Math.abs(q!.t - p.t));
+    if (ecarts.length) p.r = Math.min(p.r, 0.45 * Math.min(...ecarts));
+  });
+  return { items, longueur: t + def / 2 };
+}
+
 /**
- * Place les plantes actives en mètres, allées verticales : x = allée, y = cumul des
- * espacements depuis le haut. Origine (0, 0) en haut à gauche de la première allée.
+ * Place les plantes actives en mètres. Les allées sont verticales : x = allée, y = cumul des
+ * espacements depuis le haut ; origine (0, 0) en haut à gauche de la première allée.
+ * Les haies sont posées ensuite sur leur côté : en haut et en bas à `distance` du bout des allées,
+ * à gauche et à droite à `distance` de l'allée voisine. Plusieurs haies d'un même côté
+ * s'empilent vers l'extérieur, chacune à sa distance de la précédente.
+ * Avec `seuleAllee`, le rang demandé (allée ou haie) est dessiné seul, vertical.
  */
 export function disposer(v: Verger, seuleAllee?: string): Disposition {
   const ecart = nombre(v.ecartAllees.v) ?? 6;
-  const allees = v.allees.filter((a) => !seuleAllee || a.id === seuleAllee);
+  const rangs = v.allees.filter((a) => !seuleAllee || a.id === seuleAllee);
+  const allees = seuleAllee ? rangs : rangs.filter((a) => !estHaie(a));
   const places: Place[] = [];
   const xAllee = new Map<string, number>();
   let hauteur = 0;
   allees.forEach((a, i) => {
     const x = (i + 0.5) * ecart;
     xAllee.set(a.id, x);
-    const def = nombre(a.espacementDefaut.v) ?? 5;
-    const rArbre = Math.min(0.36 * def, 0.42 * ecart, 2.4);
-    let y = 0, prec: Emplacement | null = null;
-    const debut = places.length;
-    for (const e of trierEmplacements(v.emplacements.filter((p) => p.allee === a.id && estActif(p.statut)))) {
-      // Sans espacement saisi : celui de l'allée entre deux plantes de même strate, la moitié quand la strate change
-      // (plante basse intercalée entre deux arbres).
-      const pas = nombre(e.espacement?.v) ?? def * (prec && e.strate !== prec.strate ? 0.5 : 1);
-      y += prec ? pas : def / 2;
-      places.push({ e, x, y, r: RAYONS[e.strate] ?? rArbre });
-      prec = e;
-    }
-    // Des arbres plus serrés que l'espacement par défaut ont des couronnes plus petites : elles ne se chevauchent pas.
-    const allee = places.slice(debut);
-    allee.forEach((p, i) => {
-      const ecarts = [allee[i - 1], allee[i + 1]].filter((q): q is Place => !!q).map((q) => Math.abs(q.y - p.y));
-      if (ecarts.length) p.r = Math.min(p.r, 0.45 * Math.min(...ecarts));
-    });
-    hauteur = Math.max(hauteur, y + def / 2);
+    const { items, longueur } = rang(v, a, ecart);
+    for (const p of items) places.push({ e: p.e, x, y: p.t, r: p.r });
+    hauteur = Math.max(hauteur, longueur);
   });
-  return { places, largeur: Math.max(1, allees.length) * ecart, hauteur: Math.max(hauteur, 5), ecart, xAllee };
+  hauteur = Math.max(hauteur, 5);
+  const largeur = Math.max(1, allees.length) * ecart;
+
+  const bandes: Bande[] = [];
+  const bord = { haut: 0, bas: hauteur, gauche: 0.5 * ecart, droite: largeur - 0.5 * ecart };
+  if (!allees.length) bord.gauche = bord.droite = 0.5 * ecart;
+  for (const h of seuleAllee ? [] : rangs.filter(estHaie)) {
+    const cote = coteDe(h), d = nombre(h.distance?.v) ?? DISTANCE_HAIE;
+    const { items, longueur } = rang(v, h, ecart);
+    const horizontale = cote === 'haut' || cote === 'bas';
+    const pos = (bord[cote] += cote === 'haut' || cote === 'gauche' ? -d : d);
+    const fin = Math.max(longueur, horizontale ? largeur : hauteur);
+    for (const p of items) places.push(horizontale ? { e: p.e, x: p.t, y: pos, r: p.r } : { e: p.e, x: pos, y: p.t, r: p.r });
+    bandes.push(horizontale ? { haie: h, cote, x1: 0, y1: pos, x2: fin, y2: pos, vide: !items.length }
+      : { haie: h, cote, x1: pos, y1: 0, x2: pos, y2: fin, vide: !items.length });
+  }
+  return { places, largeur, hauteur, ecart, xAllee, bandes };
 }
 
 /** Générateur pseudo-aléatoire déterministe : le même arbre a toujours la même silhouette. */
@@ -110,11 +142,13 @@ export function dessinerPlan(v: Verger, o: OptionsPlan): string {
   const k = o.echelle ?? 13;
   const disp = disposer(v, o.allee);
   const cv = new Map(v.cultivars.map((c) => [c.id, c]));
-  const allees = v.allees.filter((a) => !o.allee || a.id === o.allee);
+  const allees = v.allees.filter((a) => (o.allee ? a.id === o.allee : !estHaie(a)));
 
-  // Les décorations peuvent déborder de la zone des allées : le cadre s'agrandit.
+  // Haies, décorations et plantes peuvent déborder de la zone des allées : le cadre s'agrandit.
   const decors = o.allee ? [] : v.decorations;
   const xs = [0, disp.largeur], ys = [0, disp.hauteur];
+  for (const p of disp.places) { xs.push(p.x - p.r, p.x + p.r); ys.push(p.y - p.r, p.y + p.r); }
+  for (const b of disp.bandes) { xs.push(b.x1 - 1.5, b.x2 + 1.5); ys.push(b.y1 - 1.5, b.y2 + 1.5); }
   for (const d of decors) {
     const m = Math.max(d.rayon ?? 1, d.largeur ?? 0, d.hauteur ?? 0) + 1;
     xs.push(d.x - m, d.x + m); ys.push(d.y - m, d.y + m);
@@ -124,7 +158,7 @@ export function dessinerPlan(v: Verger, o: OptionsPlan): string {
   const mg = 24, mgG = o.allee ? 24 : 82, haut = 72, bas = 44, droite = o.etiquettes ? 300 : 0;
   const X = (m: number) => mgG + (m - minX) * k, Y = (m: number) => haut + (m - minY) * k;
   const W = mg + mgG + (Math.max(...xs) - minX) * k + droite, H = haut + (Math.max(...ys) - minY) * k + bas;
-  const yBas = Y(disp.hauteur);
+  const yBas = Y(disp.hauteur), yPied = Y(Math.max(...ys)) + 28;
 
   let s = `<svg class="plan${o.etiquettes ? ' avec-noms' : ''}" viewBox="0 0 ${n1(W)} ${n1(H)}" width="${n1(W)}" height="${n1(H)}" role="group" aria-label="Plan ${o.allee ? "de l'allée" : 'du verger'} ${esc(o.allee ? allees[0]?.nom : v.nom)}">`;
   s += `<rect width="${n1(W)}" height="${n1(H)}" rx="10" fill="#7fa650"/>`;
@@ -135,12 +169,23 @@ export function dessinerPlan(v: Verger, o: OptionsPlan): string {
   for (let i = 0; i <= allees.length; i++)
     s += `<line x1="${n1(X(i * disp.ecart))}" y1="${n1(Y(0))}" x2="${n1(X(i * disp.ecart))}" y2="${n1(yBas)}" stroke="#b6975a" stroke-width="${n1(Math.max(3, k * 0.45))}"/>`;
 
+  // Haies : une bande de terre le long de la ligne de plantation ; en pointillé si la haie est vide.
+  for (const b of disp.bandes) {
+    const h = b.cote === 'haut' || b.cote === 'bas', e = Math.max(10, 1.6 * k);
+    const [x, y] = [X(b.x1), Y(b.y1)], [L, Ht] = h ? [X(b.x2) - x, e] : [e, Y(b.y2) - y];
+    const nom = nomHaie(b.haie);
+    s += `<g class="haie${b.vide ? ' vide' : ''}" data-haie="${esc(b.haie.id)}">`;
+    s += `<rect x="${n1(h ? x : x - e / 2)}" y="${n1(h ? y - e / 2 : y)}" width="${n1(L)}" height="${n1(Ht)}" rx="${n1(e / 2)}" fill="${b.vide ? 'none' : '#6e8f45'}" stroke="#4a6a2c" stroke-width="1.2"${b.vide ? ' stroke-dasharray="6 5"' : ''}/>`;
+    const tx = h ? x + 6 : x, ty = h ? y - e / 2 - 5 : y - 6;
+    s += `<a href="${esc(o.lienAllee(b.haie.id))}"><text class="nom-haie" x="${n1(tx)}" y="${n1(ty)}"${h ? '' : ' text-anchor="middle"'}>${esc(`${nom}${b.vide ? ' (vide)' : ''}`)}</text></a></g>`;
+  }
+
   s += decors.filter((d) => d.type === 'chemin' || d.type === 'haie' || d.type === 'cloture' || d.type === 'mare').map((d) => decor(d, k, X, Y)).join('');
 
   // Plantes compagnes : un petit massif entre deux arbres quand la fiche mentionne des associations.
   disp.places.forEach((p, i) => {
     const suiv = disp.places[i + 1];
-    if (!suiv || suiv.e.allee !== p.e.allee || p.e.strate !== 'arbre' || suiv.e.strate !== 'arbre' || !o.aAssociation(cv.get(p.e.cultivar))) return;
+    if (!suiv || suiv.e.allee !== p.e.allee || suiv.x !== p.x || p.e.strate !== 'arbre' || suiv.e.strate !== 'arbre' || !o.aAssociation(cv.get(p.e.cultivar))) return;
     const rnd = alea(`c${p.e.id}`), my = (p.y + p.r + suiv.y - suiv.r) / 2;
     s += `<path class="compagne" aria-hidden="true" d="${couronne(X(p.x), Y(my), Math.min(0.5, (suiv.y - suiv.r - p.y - p.r) / 2) * k, rnd)}" fill="${rnd() > 0.5 ? '#b9c765' : '#a8c7b0'}" stroke="#55703a" stroke-width="0.8"/>`;
   });
@@ -168,7 +213,8 @@ export function dessinerPlan(v: Verger, o: OptionsPlan): string {
     else s += `<text class="nom" x="${n1(x)}" y="${n1(y + r + 9)}" text-anchor="middle">${esc(nom.slice(0, 22))}</text>`;
     s += '</g>';
     // Le badge est dessiné hors du bouton : son texte ne doit pas entrer dans le nom accessible.
-    if (mode) {
+    // Sous 9 px de rayon, la lettre couvrirait la plante : elle reste dans la fiche.
+    if (mode && r >= 9) {
       const bx = x + r * 0.72, by = y - r * 0.72;
       s += `<g class="badge" aria-hidden="true"><circle cx="${n1(bx)}" cy="${n1(by)}" r="7" fill="#fffdf5" stroke="#5a4a2a"/><text x="${n1(bx)}" y="${n1(by + 3.4)}" text-anchor="middle">${esc(LETTRES[mode] ?? '?')}</text></g>`;
     }
@@ -177,10 +223,10 @@ export function dessinerPlan(v: Verger, o: OptionsPlan): string {
   s += decors.filter((d) => !['chemin', 'haie', 'cloture', 'mare'].includes(d.type)).map((d) => decor(d, k, X, Y)).join('');
 
   // Pied de plan : « Allée : 1 2 3 », comme sur le schéma d'origine.
-  if (!o.allee) {
-    s += `<text class="pied" x="${n1(X(0) - 10)}" y="${n1(yBas + 28)}" text-anchor="end">Allée :</text>`;
+  if (!o.allee && allees.length) {
+    s += `<text class="pied" x="${n1(X(0) - 10)}" y="${n1(yPied)}" text-anchor="end">Allée :</text>`;
     allees.forEach((a, i) => {
-      s += `<a href="${esc(o.lienAllee(a.id))}"><title>${esc(a.nom)}</title><text class="pied numero" x="${n1(X((i + 0.5) * disp.ecart))}" y="${n1(yBas + 28)}" text-anchor="middle">${a.numero}</text></a>`;
+      s += `<a href="${esc(o.lienAllee(a.id))}"><title>${esc(a.nom)}</title><text class="pied numero" x="${n1(X((i + 0.5) * disp.ecart))}" y="${n1(yPied)}" text-anchor="middle">${a.numero}</text></a>`;
     });
   }
   // Barre d'échelle et flèche du nord (allées d'azimut nordDeg : le nord est tourné d'autant vers la gauche).

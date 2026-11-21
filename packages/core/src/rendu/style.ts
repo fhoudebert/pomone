@@ -32,6 +32,7 @@ svg.plan text{fill:#17260f}
 .pied{font-size:17px;fill:#fff!important;font-weight:600}.pied.numero{text-decoration:underline}
 .echelle text,.nord text{font-size:11px;font-weight:700}
 .decor-nom,.decor-texte{font-size:10px;font-style:italic}
+.nom-haie{font-size:11px;font-weight:600;text-decoration:underline}
 .legende{display:flex;flex-wrap:wrap;gap:.3rem 1rem;margin:.6rem 0;padding:0;list-style:none;font-size:.9rem}
 .legende i{display:inline-block;width:.9em;height:.9em;border-radius:50%;border:1px solid #2e4a1f;vertical-align:-1px;margin-right:.3em}
 .legende b{display:inline-block;min-width:1.3em;text-align:center;border:1px solid #5a4a2a;border-radius:50%;font-size:.75em;margin-right:.3em}

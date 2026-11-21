@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AxeBuilder } from '@axe-core/playwright';
 import { chromium, type Page } from 'playwright-core';
-import { genererSite } from '../packages/core/src/index';
+import { champ, genererSite, type Verger } from '../packages/core/src/index';
 import { actifs, arbreAvecFiche, lireExemple } from '../packages/core/test/exemple';
 
 const lecture = lireExemple();
@@ -32,6 +32,20 @@ const ecrire = (sous: string, o: Parameters<typeof genererSite>[1]) => {
 };
 ecrire('site', { rapport });
 ecrire('unique', { unique: true });
+
+// Le verger d'exemple n'a pas de haie : on lui en ajoute, en mémoire, sur trois côtés.
+const avecHaies: Verger = structuredClone(verger);
+const haie = (id: string, nom: string, cote: string) => ({ id, numero: 0, nom, espacementDefaut: champ('2'), type: 'haie', cote, distance: null });
+avecHaies.allees.push(haie('HN', 'Petits fruits', 'haut'), haie('HS', 'Haie du sud', 'bas'), haie('HO', 'Framboisiers', 'gauche'));
+const cultivarHaie = verger.cultivars[0]!.id;
+for (const [allee, n] of [['HN', 8], ['HO', 4]] as const)
+  for (let i = 1; i <= n; i++)
+    avecHaies.emplacements.push({ ...verger.emplacements[0]!, id: `${allee}-${i}`, allee, position: String(i), cultivar: cultivarHaie, statut: 'planté', strate: 'petit fruit', espacement: null });
+for (const f of genererSite(avecHaies, {})) {
+  const chemin = join(dossier, 'haies', f.chemin);
+  mkdirSync(dirname(chemin), { recursive: true });
+  writeFileSync(chemin, f.contenu);
+}
 const url = (c: string) => { const [f, ancre] = c.split('#'); return pathToFileURL(join(dossier, f!)).href + (ancre ? `#${ancre}` : ''); };
 
 const navigateur = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH, args: ['--no-sandbox'] } : { channel: 'chrome', args: ['--no-sandbox'] });
@@ -128,6 +142,17 @@ await etape('impression : le plan tient sur une page A4 paysage', async () => {
   if (process.env.POMONE_PDF) writeFileSync(process.env.POMONE_PDF, pdf);
   const boite = await p.locator('svg.plan').boundingBox();
   assert.ok(boite && boite.height <= 720 && boite.width <= 1050, `plan imprimé ${boite?.width}×${boite?.height}`);
+});
+await etape('haies : fiche au clic, lien vers la page de haie, accessibilité', async () => {
+  const p = await ouvrirPage('haies/index.html');
+  await p.click('[data-fiche="HN-3"]');
+  assert.match(await p.textContent('#panneau .lieu') ?? '', /^Haie — Petits fruits · position 3/);
+  await p.keyboard.press('Escape');
+  assert.equal(await p.locator('.haie.vide[data-haie="HS"]').count(), 1);
+  await axe(p, 'plan avec haies');
+  await p.click('.haie[data-haie="HO"] a');
+  assert.equal(await p.textContent('h1'), 'Haie — Framboisiers');
+  await axe(p, 'page de haie');
 });
 await etape('aucune erreur ni requête réseau', async () => assert.deepEqual(erreurs, []));
 

@@ -2,9 +2,9 @@ import { especeParCle } from '../especes';
 import { compterEbauches, estActif, trierEmplacements } from '../lecture';
 import { rapprocher } from '../noms';
 import { nombre, plat } from '../normaliser';
-import type { Allee, Anomalie, Champ, Cultivar, Emplacement, Verger } from '../types';
+import { type Allee, type Anomalie, type Champ, type Cultivar, type Emplacement, type Verger, DISTANCE_HAIE, coteDe, estHaie } from '../types';
 import { LOGO } from './logo';
-import { LETTRES, dessinerPlan, esc } from './plan';
+import { LETTRES, dessinerPlan, esc, nomHaie } from './plan';
 import { SCRIPT } from './script';
 import { STYLE } from './style';
 
@@ -98,7 +98,7 @@ class Site {
     const esp = e.espacement && this.vu(e.espacement) ? e.espacement : a && estActif(e.statut) ? a.espacementDefaut : null;
     let h = `<article class="fiche"><h2>${esc(this.nom(c, e))}</h2>`;
     if (c) h += `<p class="latin">${this.latin(c)}</p>`;
-    h += `<p class="lieu">Allée ${a ? `${a.numero} — ${esc(a.nom)}` : esc(e.allee)} · position ${esc(e.position)} · <span class="etat${e.statut === 'à planter' ? ' a-planter' : ''}">${esc(e.statut)}</span> · ${esc(e.id)}</p>`;
+    h += `<p class="lieu">${a ? esc(this.rangNom(a)) : `Allée ${esc(e.allee)}`} · position ${esc(e.position)} · <span class="etat${e.statut === 'à planter' ? ' a-planter' : ''}">${esc(e.statut)}</span> · ${esc(e.id)}</p>`;
     h += this.lignes([
       ['Strate', esc(e.strate)],
       ['Multiplication', this.modeTexte(this.mode(e, c))],
@@ -151,8 +151,25 @@ ${statuts.length > 1 ? `<select id="filtre-statut" aria-label="Filtrer par statu
 ${this.plan(p)}
 <ul class="legende">${especes.map((x) => `<li><i style="background:${x.feuillage};box-shadow:inset 0 0 0 3px ${x.feuillage},inset 0 0 0 9px ${x.fruit}"></i>${esc(x.vernaculaire || x.cle)}</li>`).join('')}</ul>
 <ul class="legende">${Object.entries(LETTRES).map(([m, l]) => `<li><b>${l}</b>${m}</li>`).join('')}<li>◌ arbre à planter</li>${nbEb ? '<li><em class="ebauche">italique</em> : ébauche</li>' : ''}</ul>
-<h2>Allées</h2>
-<ul class="cartes">${this.v.allees.map((a) => `<li><a href="${esc(this.lien(p, 'allee', a.id))}"><strong>Allée ${a.numero}</strong> — ${esc(a.nom)}</a><br><small>${this.actifs(a.id).filter((e) => e.statut === 'planté').length} plantés, ${this.actifs(a.id).filter((e) => e.statut === 'à planter').length} à planter</small></li>`).join('')}</ul>${this.ideesGenerales()}`;
+${this.cartes(p, 'Allées', this.v.allees.filter((a) => !estHaie(a)))}${this.cartes(p, 'Haies', this.v.allees.filter(estHaie))}${this.ideesGenerales()}`;
+  }
+
+  /** « Allée 3 — Pruniers » ou « Haie — Haie nord ». */
+  rangNom(a: Allee): string { return estHaie(a) ? nomHaie(a) : `Allée ${a.numero} — ${a.nom}`; }
+
+  /** Où se trouve une haie : « en haut, à 10 m du bout des allées ». */
+  situation(a: Allee): string {
+    const cote = coteDe(a), d = a.distance && this.vu(a.distance) ? a.distance : { v: String(DISTANCE_HAIE), ebauche: false };
+    const dist = `<span class="court">${this.ch({ v: `${d.v} m`, ebauche: d.ebauche })}</span>`;
+    const rangs = this.v.allees.filter((x) => estHaie(x) && coteDe(x) === cote);
+    const voisin = rangs.indexOf(a) > 0 ? 'de la haie précédente' : cote === 'haut' || cote === 'bas' ? 'du bout des allées' : "de l'allée voisine";
+    return `${{ haut: 'en haut', bas: 'en bas', gauche: 'à gauche', droite: 'à droite' }[cote]}, à ${dist} ${voisin}`;
+  }
+
+  cartes(p: string, titre: string, rangs: Allee[]): string {
+    if (!rangs.length) return '';
+    return `<h2>${titre}</h2>
+<ul class="cartes">${rangs.map((a) => { const l = this.actifs(a.id); return `<li><a href="${esc(this.lien(p, 'allee', a.id))}"><strong>${estHaie(a) ? 'Haie' : `Allée ${a.numero}`}</strong> — ${esc(a.nom || a.id)}</a><br><small>${estHaie(a) ? `${this.situation(a)} · ` : ''}${l.filter((e) => e.statut === 'planté').length} plantés, ${l.filter((e) => e.statut === 'à planter').length} à planter</small></li>`; }).join('')}</ul>`;
   }
 
   ideesGenerales(): string {
@@ -164,14 +181,16 @@ ${this.plan(p)}
     const liste = trierEmplacements(this.v.emplacements.filter((e) => e.allee === a.id));
     const idees = this.v.idees.filter((i) => i.allee === a.id);
     const esp = a.espacementDefaut;
-    return `<h1>Allée ${a.numero} — ${esc(a.nom)}</h1>
-<p>Espacement par défaut : <span class="court">${this.ch({ v: `${esp.v} m`, ebauche: esp.ebauche })}</span>${esp.ebauche && !this.o.masquerEbauches ? ' <small>(à vérifier)</small>' : ''}. Le haut du plan est le début de l'allée.</p>
+    const haie = estHaie(a), sens = coteDe(a) === 'haut' || coteDe(a) === 'bas' ? 'de gauche à droite' : 'de haut en bas';
+    return `<h1>${esc(this.rangNom(a))}</h1>
+${haie ? `<p>Sur le plan du verger, cette haie est ${this.situation(a)} ; ses plantes s'y suivent ${sens}. Elle est dessinée verticale ci-dessous.</p>` : ''}
+<p>Espacement par défaut : <span class="court">${this.ch({ v: `${esp.v} m`, ebauche: esp.ebauche })}</span>${esp.ebauche && !this.o.masquerEbauches ? ' <small>(à vérifier)</small>' : ''}. Le haut du plan est le début ${haie ? 'de la haie' : "de l'allée"}.</p>
 ${this.plan(p, a.id)}
-<h2>Plantes de l'allée</h2>
+<h2>Plantes ${haie ? 'de la haie' : "de l'allée"}</h2>
 <div class="table"><table><thead><tr><th data-tri>Position</th><th data-tri>Nom</th><th data-tri>Nom latin</th><th data-tri>Statut</th><th data-tri>Multiplication</th><th>Identifiant</th></tr></thead><tbody>
 ${liste.map((e) => { const c = this.cv.get(e.cultivar); return `<tr><td>${esc(e.position)}</td><td>${c ? `<a href="${esc(this.lien(p, 'cultivar', c.id))}">${esc(this.nom(c, e))}</a>` : esc(this.nom(c, e))}</td><td>${c ? this.latin(c) : ''}</td><td>${esc(e.statut)}</td><td>${this.modeTexte(this.mode(e, c))}</td><td>${estActif(e.statut) ? `<a href="${esc(this.lien(p, 'arbre', e.id))}">${esc(e.id)}</a>` : esc(e.id)}</td></tr>`; }).join('\n')}
 </tbody></table></div>
-<h2>Idées pour cette allée</h2>
+<h2>Idées pour ${haie ? 'cette haie' : 'cette allée'}</h2>
 ${idees.length ? `<div class="table"><table><thead><tr><th data-tri>Type</th><th data-tri>Sujet</th><th>Emplacement</th><th data-tri>Priorité</th><th>Remarque</th></tr></thead><tbody>${idees.map((i) => `<tr><td>${esc(i.type)}</td><td>${esc(i.sujet)}</td><td>${esc(i.emplacement)}</td><td>${esc(i.priorite)}</td><td>${esc(i.remarque)}</td></tr>`).join('')}</tbody></table></div>` : '<p>Aucune idée notée (remplacements, évolutions, plantes intercalaires) : feuille « idees » du classeur.</p>'}`;
   }
 
@@ -180,7 +199,7 @@ ${idees.length ? `<div class="table"><table><thead><tr><th data-tri>Type</th><th
     return `<h1>${esc(this.nom(c))}</h1><p class="latin">${this.latin(c)}</p>
 ${this.ficheCultivar(c) || '<p class="a-completer">Fiche à compléter par l’administrateur</p>'}
 <h2>Emplacements</h2>
-${places.length ? `<ul>${places.map((e) => { const a = this.al.get(e.allee); return `<li>${estActif(e.statut) ? `<a href="${esc(this.lien(p, 'arbre', e.id))}">${esc(e.id)}</a>` : esc(e.id)} — <a href="${esc(this.lien(p, 'allee', e.allee))}">allée ${a?.numero ?? esc(e.allee)}</a>, position ${esc(e.position)} (${esc(e.statut)})</li>`; }).join('')}</ul>` : '<p>Variété non plantée dans le verger.</p>'}`;
+${places.length ? `<ul>${places.map((e) => { const a = this.al.get(e.allee); return `<li>${estActif(e.statut) ? `<a href="${esc(this.lien(p, 'arbre', e.id))}">${esc(e.id)}</a>` : esc(e.id)} — <a href="${esc(this.lien(p, 'allee', e.allee))}">${a ? esc(this.rangNom(a)) : esc(e.allee)}</a>, position ${esc(e.position)} (${esc(e.statut)})</li>`; }).join('')}</ul>` : '<p>Variété non plantée dans le verger.</p>'}`;
   }
 
   sectionCatalogue(p: string): string {
@@ -237,7 +256,7 @@ ${tri.map((x) => `<tr><td class="niveau-${x.niveau}">${x.niveau}</td><td>${esc(x
     }
     const f: FichierSite[] = [{ chemin: 'index.html', contenu: this.page(v.nom, '', this.sectionPlan('') + this.modeles(actifs, ''), 'plan') }];
     for (const a of v.allees)
-      f.push({ chemin: `allees/${fichier(a.id)}.html`, contenu: this.page(`Allée ${a.numero} — ${v.nom}`, '../', this.sectionAllee(a, '../') + this.modeles(this.actifs(a.id), '../'), '') });
+      f.push({ chemin: `allees/${fichier(a.id)}.html`, contenu: this.page(`${this.rangNom(a)} — ${v.nom}`, '../', this.sectionAllee(a, '../') + this.modeles(this.actifs(a.id), '../'), '') });
     for (const c of v.cultivars)
       f.push({ chemin: `cultivars/${fichier(c.id)}.html`, contenu: this.page(`${this.nom(c)} — ${v.nom}`, '../', this.sectionCultivar(c, '../'), '') });
     f.push({ chemin: 'catalogue.html', contenu: this.page(`Catalogue — ${v.nom}`, '', this.sectionCatalogue(''), 'catalogue') });

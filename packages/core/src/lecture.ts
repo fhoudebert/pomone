@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { estEbauche, lireEbauche } from './ebauche';
 import { comparerPositions, positionValide } from './normaliser';
-import { type Anomalie, type Lecture, type Verger, MODES_MULTIPLICATION, STATUTS, STRATES } from './types';
+import { type Anomalie, type Lecture, type Verger, COTES, MODES_MULTIPLICATION, STATUTS, STRATES, TYPES_RANG } from './types';
 import { ecrireV1, lireV1 } from './v1';
 
 /** Lit un classeur .xlsx, .xls ou .ods, au format Pomone v1 ou « ébauche ». Ne lève pas d'exception sur un classeur imparfait. */
@@ -42,6 +42,13 @@ export function controler(v: Verger): Anomalie[] {
   doublons(v.cultivars.map((c) => c.id), 'de cultivar');
   const allees = new Set(v.allees.map((a) => a.id)), cultivars = new Set(v.cultivars.map((c) => c.id)), places = new Set(v.emplacements.map((e) => e.id));
   const modes: readonly string[] = MODES_MULTIPLICATION, statuts: readonly string[] = STATUTS, strates: readonly string[] = STRATES;
+  const types: readonly string[] = TYPES_RANG, cotes: readonly string[] = COTES;
+  for (const a of v.allees) {
+    if (!types.includes(a.type)) note('avertissement', 'type-rang', `${a.id} : type « ${a.type} » hors liste (${TYPES_RANG.join(', ')}), lu comme une allée.`);
+    if (a.type === 'haie' && a.cote && !cotes.includes(a.cote)) note('avertissement', 'cote', `${a.id} : côté « ${a.cote} » hors liste (${COTES.join(', ')}), haie placée en haut.`);
+    if (a.type !== 'haie' && a.cote) note('avertissement', 'cote', `${a.id} : un côté n'a de sens que pour une haie, « ${a.cote} » est ignoré.`);
+    if (a.distance && a.distance.v && !(Number(a.distance.v.replace(',', '.')) >= 0)) note('avertissement', 'distance', `${a.id} : distance « ${a.distance.v} » illisible, 10 m retenus.`);
+  }
   const occupes = new Map<string, string>();
   for (const e of v.emplacements) {
     if (!e.id) note('erreur', 'id-absent', `Un emplacement de l'allée « ${e.allee} » n'a pas d'identifiant.`);
@@ -69,7 +76,7 @@ export function controler(v: Verger): Anomalie[] {
 
 export function compterEbauches(v: Verger): number {
   let n = v.ecartAllees.ebauche ? 1 : 0;
-  for (const a of v.allees) if (a.espacementDefaut.ebauche) n++;
+  for (const a of v.allees) n += [a.espacementDefaut, a.distance].filter((x) => x && x.ebauche && x.v).length;
   for (const c of v.cultivars) n += [c.nomLatin, c.cultivar, c.nomVernaculaire, c.multiplication, c.description, ...c.fiche.map((f) => f.valeur)].filter((x) => x.ebauche && x.v).length;
   for (const e of v.emplacements) n += [e.espacement, e.multiplication, e.porteGreffe, e.origine, e.remarque].filter((x) => x && x.ebauche && x.v).length;
   return n;
