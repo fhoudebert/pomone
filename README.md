@@ -7,7 +7,7 @@ consultables hors ligne : un plan vu de dessus, allée par allée, et la fiche d
   (ou le classeur « ébauche » d'origine, converti à la volée).
 - **Sortie** : un dossier de pages HTML, ou un seul fichier `verger.html`, sans aucun appel réseau.
 - **Application de bureau** Linux, Windows et macOS (Tauri 2) et **ligne de commande**.
-- Licence MIT (logo : CC BY-NC-SA 3.0).
+- Licence MIT.
 
 ## Utiliser l'application
 
@@ -71,6 +71,5 @@ contributions arrivent par séries de patchs : voir [docs/contribuer.md](docs/co
 
 ## Licence
 
-Code, documentation et exemples : MIT 
-Logo et icônes :CC BY-NC-SA 3.0, voir [LOGO-LICENCE.md](LOGO-LICENCE.md).
+Code, documentation et exemples : MIT.
 Dépendances : voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

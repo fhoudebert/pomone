@@ -69,5 +69,4 @@ L'application n'est pas signée. Au premier lancement :
 
 ## Licence
 
-Pomone est un logiciel libre sous licence MIT. Son logo est sous licence CC BY-NC-SA 3.0
-(voir `LOGO-LICENCE.md`). Les données de votre verger vous appartiennent.
+Pomone est un logiciel libre sous licence MIT. Son logo est sous licence CC BY-NC-SA 3.0. Les données de votre verger vous appartiennent.
