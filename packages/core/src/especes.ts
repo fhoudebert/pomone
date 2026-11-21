@@ -22,6 +22,8 @@ export const ESPECES: Espece[] = [
   e('pommier', 'Pommier', 'Malus domestica', /\bmalus\b|\bpomm/, 'arbre', 'greffage', '#5f9a3a', '#d9342b'),
   e('poirier', 'Poirier', 'Pyrus communis', /\bpyrus\b|\bpoir/, 'arbre', 'greffage', '#86a843', '#d6c13a'),
   e('cognassier', 'Cognassier', 'Cydonia oblonga', /cydonia|cognass|\bcoing/, 'arbre', 'marcotte', '#a3a43c', '#e8b90e'),
+  e('chataignier', 'Châtaignier', 'Castanea sativa', /castanea|chataign|marron/, 'arbre', 'greffage', '#4f7a34', '#7a4a22'),
+  e('bibassier', 'Néflier du Japon', 'Eriobotrya japonica', /eriobotrya|bibass|neflier du japon/, 'arbre', 'semis', '#5e8f5a', '#f2a33a'),
   e('kaki', 'Plaqueminier', 'Diospyros kaki', /diospyros|\bkaki|plaquemin/, 'arbre', 'greffage', '#7f9c5a', '#f08024'),
   e('noyer', 'Noyer', 'Juglans regia', /juglans|\bnoyer|\bnoix/, 'arbre', 'semis', '#5c7d3c', '#8a6a3b'),
   e('figuier', 'Figuier', 'Ficus carica', /\bficus|\bfigu/, 'arbre', 'bouture', '#4d8f6a', '#6b3f7a'),
@@ -29,7 +31,7 @@ export const ESPECES: Espece[] = [
   e('sorbier', 'Sorbier', 'Sorbus', /sorbus|sorbier|cormier/, 'arbre', 'semis', '#86a86a', '#e2622b'),
   e('amelanchier', 'Amélanchier', 'Amelanchier', /amelanch/, 'arbuste', 'semis', '#79a56b', '#5a3c8a'),
   e('asiminier', 'Asiminier', 'Asimina triloba', /asimin/, 'arbre', 'semis', '#6c9a4c', '#c9c24a'),
-  e('feijoa', 'Feijoa', 'Acca sellowiana', /feijoa|\bacca\b/, 'arbuste', 'bouture', '#7d9f8a', '#7aa33c'),
+  e('feijoa', 'Feijoa', 'Acca sellowiana', /feijoa|\bacca\b|goyavier/, 'arbuste', 'bouture', '#7d9f8a', '#7aa33c'),
   e('framboisier', 'Framboisier', 'Rubus idaeus', /rubus|frambois/, 'petit fruit', 'drageon', '#8fb46a', '#d6336c'),
   e('cassissier', 'Cassissier', 'Ribes nigrum', /ribes nigrum|cassis/, 'petit fruit', 'bouture', '#7aa45a', '#2d1f3d'),
   e('groseillier', 'Groseillier', 'Ribes rubrum', /\bribes|groseill/, 'petit fruit', 'bouture', '#8ab563', '#e03131'),
@@ -38,11 +40,22 @@ export const ESPECES: Espece[] = [
 
 export const ESPECE_AUTRE: Espece = e('autre', '', '', /$^/, 'arbre', '', '#6d9d55', '#c0392b');
 
-export const especeParCle = (cle: string): Espece => ESPECES.find((x) => x.cle === cle) ?? { ...ESPECE_AUTRE, cle: cle || 'autre' };
+/**
+ * Espèce d'après la clé saisie dans le classeur. Une clé libre (« goyavier », « plaqueminier »)
+ * reprend l'apparence de l'espèce connue qu'elle désigne, en gardant sa propre clé pour les filtres.
+ */
+export function especeParCle(cle: string): Espece {
+  const connue = ESPECES.find((x) => x.cle === cle);
+  if (connue) return connue;
+  const devinee = cle ? devinerEspece(cle.replace(/-/g, ' ')) : null;
+  if (devinee) return { ...devinee, cle };
+  const nom = cle.replace(/-/g, ' ');
+  return { ...ESPECE_AUTRE, cle: cle || 'autre', vernaculaire: nom.charAt(0).toUpperCase() + nom.slice(1) };
+}
 
 export function devinerEspece(texte: string): Espece | null {
   const t = plat(texte);
   return ESPECES.find((x) => x.motif.test(t)) ?? null;
 }
 
-export const GENRES = new Set(['malus', 'pyrus', 'prunus', 'cydonia', 'diospyros', 'juglans', 'sorbus', 'ficus', 'punica', 'amelanchier', 'asimina', 'acca', 'rubus', 'ribes', 'crataegus', 'mespilus', 'corylus', 'castanea', 'morus', 'vitis', 'actinidia']);
+export const GENRES = new Set(['malus', 'pyrus', 'prunus', 'cydonia', 'diospyros', 'juglans', 'sorbus', 'ficus', 'punica', 'amelanchier', 'asimina', 'acca', 'rubus', 'ribes', 'crataegus', 'mespilus', 'corylus', 'castanea', 'morus', 'vitis', 'actinidia', 'eriobotrya']);

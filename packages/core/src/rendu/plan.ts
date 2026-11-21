@@ -28,12 +28,19 @@ export function disposer(v: Verger, seuleAllee?: string): Disposition {
     const def = nombre(a.espacementDefaut.v) ?? 5;
     const rArbre = Math.min(0.36 * def, 0.42 * ecart, 2.4);
     let y = 0, prec: Emplacement | null = null;
+    const debut = places.length;
     for (const e of trierEmplacements(v.emplacements.filter((p) => p.allee === a.id && estActif(p.statut)))) {
       const pas = nombre(e.espacement?.v) ?? def * (prec && (e.strate !== 'arbre' || prec.strate !== 'arbre') ? 0.5 : 1);
       y += prec ? pas : def / 2;
       places.push({ e, x, y, r: RAYONS[e.strate] ?? rArbre });
       prec = e;
     }
+    // Des arbres plus serrés que l'espacement par défaut ont des couronnes plus petites : elles ne se chevauchent pas.
+    const allee = places.slice(debut);
+    allee.forEach((p, i) => {
+      const ecarts = [allee[i - 1], allee[i + 1]].filter((q): q is Place => !!q).map((q) => Math.abs(q.y - p.y));
+      if (ecarts.length) p.r = Math.min(p.r, 0.45 * Math.min(...ecarts));
+    });
     hauteur = Math.max(hauteur, y + def / 2);
   });
   return { places, largeur: Math.max(1, allees.length) * ecart, hauteur: Math.max(hauteur, 5), ecart, xAllee };
