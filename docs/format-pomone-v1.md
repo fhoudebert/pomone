@@ -39,7 +39,7 @@ mention « à valider ». Pour valider, retirer le `~`. Exemple : `~5` pour un e
 | `cultivar` | non | `id` de la feuille `cultivars` ; vide pour un arbre à planter non choisi |
 | `statut` | oui | `planté`, `à planter`, `remplacé`, `mort`, `retiré` |
 | `strate` | non | `arbre`, `arbuste`, `petit fruit`, `plante basse` |
-| `espacement_precedent_m` | non | distance depuis la plante précédente ; sinon valeur de l'allée (moitié pour une plante basse) |
+| `espacement_precedent_m` | non | distance depuis la plante précédente ; sinon valeur de l'allée entre deux plantes de même strate, la moitié quand la strate change (plante basse intercalée entre deux arbres) |
 | `date_plantation`, `date_retrait` | non | |
 | `remplace` | non | `id` de l'emplacement remplacé |
 | `multiplication` | non | prime sur celle du cultivar |

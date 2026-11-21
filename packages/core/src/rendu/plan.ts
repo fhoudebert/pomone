@@ -30,7 +30,9 @@ export function disposer(v: Verger, seuleAllee?: string): Disposition {
     let y = 0, prec: Emplacement | null = null;
     const debut = places.length;
     for (const e of trierEmplacements(v.emplacements.filter((p) => p.allee === a.id && estActif(p.statut)))) {
-      const pas = nombre(e.espacement?.v) ?? def * (prec && (e.strate !== 'arbre' || prec.strate !== 'arbre') ? 0.5 : 1);
+      // Sans espacement saisi : celui de l'allée entre deux plantes de même strate, la moitié quand la strate change
+      // (plante basse intercalée entre deux arbres).
+      const pas = nombre(e.espacement?.v) ?? def * (prec && e.strate !== prec.strate ? 0.5 : 1);
       y += prec ? pas : def / 2;
       places.push({ e, x, y, r: RAYONS[e.strate] ?? rArbre });
       prec = e;
