@@ -1,9 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
-import { analyserNom, champ, classeurModele, comparerPositions, ecrireClasseur, genererSite, lireClasseur, nettoyer, rapprocher, type Verger } from '../src/index';
-
-const lire = (f: string) => lireClasseur(new Uint8Array(readFileSync(`exemples/${f}`)));
+import { analyserNom, champ, classeurModele, comparerPositions, disposer, ecrireClasseur, especeParCle, genererSite, lireClasseur, nettoyer, rapprocher, type Verger } from '../src/index';
+import { EXEMPLE, actifs, arbreAvecFiche, lireExemple } from './exemple';
 
 describe('noms et positions', () => {
   it('harmonise les apostrophes sans toucher aux élisions', () => {
@@ -24,17 +22,36 @@ describe('noms et positions', () => {
     expect(rapprocher('Bigarreau Noir de Meched', fiches, (x) => x)?.cible).toBe('Noir de Meched');
     expect(rapprocher('Reine Claude Violette', fiches, (x) => x)).toBeNull();
   });
+  it('accepte des clés d’espèce libres', () => {
+    expect(especeParCle('goyavier')).toMatchObject({ cle: 'goyavier', vernaculaire: 'Feijoa', strate: 'arbuste' });
+    expect(especeParCle('plaqueminier')).toMatchObject({ cle: 'plaqueminier', latin: 'Diospyros kaki' });
+    expect(especeParCle('kiwai')).toMatchObject({ cle: 'kiwai', vernaculaire: 'Kiwai' });
+  });
   it('trie 1 < 1.1 < 1.9 < 1.10 < 2', () => {
     expect(['2', '1.10', '1', '1.9', '1.1'].sort(comparerPositions)).toEqual(['1', '1.1', '1.9', '1.10', '2']);
   });
 });
 
-describe('format Pomone v1', () => {
-  const { verger, rapport, format } = lire('verger-pomone-v1.xlsx');
-  it("l'exemple corrigé ne lève ni erreur ni avertissement", () => {
+describe(`classeur d'exemple (${EXEMPLE})`, () => {
+  const lecture = lireExemple();
+  const { verger, rapport, format } = lecture;
+  it('est au format Pomone v1, sans erreur ni avertissement', () => {
     expect(format).toBe('pomone-v1');
     expect(rapport.filter((a) => a.niveau !== 'info')).toEqual([]);
-    expect(verger.nordDeg).toBe(10);
+  });
+  it('a des allées toutes garnies et des idées rattachées à des allées existantes', () => {
+    expect(verger.allees.length).toBeGreaterThan(0);
+    for (const a of verger.allees) expect(verger.emplacements.some((e) => e.allee === a.id), a.id).toBe(true);
+    const ids = new Set(verger.allees.map((a) => a.id));
+    for (const i of verger.idees) expect(!i.allee || ids.has(i.allee), i.sujet).toBe(true);
+  });
+  it('dessine des couronnes qui ne se chevauchent pas, même là où les arbres sont serrés', () => {
+    const { places } = disposer(verger);
+    expect(places).toHaveLength(actifs(lecture).length);
+    for (let i = 1; i < places.length; i++) {
+      const [p, q] = [places[i - 1]!, places[i]!];
+      if (p.e.allee === q.e.allee) expect(q.y - p.y, `${p.e.id} / ${q.e.id}`).toBeGreaterThanOrEqual(p.r + q.r - 1e-9);
+    }
   });
   it('survit à un aller-retour, positions intermédiaires comprises', () => {
     const v: Verger = structuredClone(verger);
@@ -48,7 +65,7 @@ describe('format Pomone v1', () => {
 
 describe('classeurs écrits', () => {
   it('marquent les ébauches en italique couleur et proposent des listes déroulantes', () => {
-    const zip = unzipSync(ecrireClasseur(lire('verger-pomone-v1.xlsx').verger));
+    const zip = unzipSync(ecrireClasseur(lireExemple().verger));
     const emplacements = strFromU8(zip['xl/worksheets/sheet3.xml']!);
     expect(emplacements).toContain('<cfRule type="beginsWith"');
     expect(emplacements).toContain('"planté,à planter,remplacé,mort,retiré"');
@@ -63,7 +80,9 @@ describe('classeurs écrits', () => {
 });
 
 describe('pages produites', () => {
-  const { verger, rapport } = lire('verger-pomone-v1.xlsx');
+  const lecture = lireExemple();
+  const { verger, rapport } = lecture;
+  const { c: cultivar } = arbreAvecFiche(lecture);
   verger.decorations.push({ id: 'pe1', type: 'point_eau', x: -3, y: 4, largeur: null, hauteur: null, rayon: 1, points: [], libelle: 'Robinet' });
   const dossier = genererSite(verger, { rapport });
   const unique = genererSite(verger, { unique: true });
@@ -72,13 +91,15 @@ describe('pages produites', () => {
   });
   it('couvrent plan, allées, cultivars, catalogue et rapport', () => {
     const chemins = dossier.map((f) => f.chemin);
-    expect(chemins).toEqual(expect.arrayContaining(['index.html', 'allees/A5.html', 'cultivars/pommier-melrose.html', 'catalogue.html', 'rapport.html']));
+    expect(chemins).toEqual(expect.arrayContaining(['index.html', `allees/${verger.allees.at(-1)!.id}.html`, `cultivars/${cultivar.id}.html`, 'catalogue.html', 'rapport.html']));
+    expect(chemins.filter((c) => c.startsWith('allees/'))).toHaveLength(verger.allees.length);
+    expect(chemins.filter((c) => c.startsWith('cultivars/'))).toHaveLength(verger.cultivars.length);
     expect(unique.map((f) => f.chemin)).toEqual(['verger.html']);
   });
   it('donnent une fiche par arbre actif, la flèche du nord et les décorations', () => {
     const index = dossier[0]!.contenu;
-    expect(index.match(/<template id="fiche-/g)).toHaveLength(71);
-    expect(index).toContain('rotate(-10)');
+    expect(index.match(/<template id="fiche-/g)).toHaveLength(actifs(lecture).length);
+    expect(index).toContain(`rotate(${-verger.nordDeg})`);
     expect(index).toContain('data-type="point_eau"');
     expect(index).toContain('class="plante a-planter"');
   });
@@ -112,8 +133,9 @@ describe('robustesse et performance', () => {
     expect(rapport.map((a) => a.code)).toEqual(expect.arrayContaining(['feuille-absente', 'allee-inconnue', 'position', 'cultivar-inconnu']));
   });
   it('génère un verger de 500 arbres en moins de 3 s', () => {
-    const base = lire('verger-pomone-v1.xlsx').verger;
-    const v: Verger = { ...base, emplacements: Array.from({ length: 500 }, (_, i) => ({ ...base.emplacements[i % 10]!, id: `T${i}`, allee: `A${(i % 7) + 1}`, position: String(Math.floor(i / 7) + 1) })) };
+    const base = lireExemple().verger;
+    const n = base.allees.length;
+    const v: Verger = { ...base, emplacements: Array.from({ length: 500 }, (_, i) => ({ ...base.emplacements[i % 10]!, id: `T${i}`, allee: base.allees[i % n]!.id, position: String(Math.floor(i / n) + 1), statut: 'planté' })) };
     const t = performance.now();
     const pages = genererSite(lireClasseur(ecrireClasseur(v)).verger);
     expect(performance.now() - t).toBeLessThan(3000);

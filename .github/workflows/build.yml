@@ -52,9 +52,9 @@ jobs:
         run: npm run licences
       - name: Générer le verger d'exemple et contrôler qu'il est autonome
         run: |
-          npm run pomone -- build exemples/verger-pomone-v1.xlsx -o site --rapport
-          npm run pomone -- build exemples/verger-pomone-ebauche.xlsx -o site-ebauche --unique
-          if grep -rlE 'https?://' site site-ebauche; then
+          npm run pomone -- build exemples/verger-pomone-v2.xlsx -o site --rapport
+          npm run pomone -- build exemples/verger-pomone-v2.xlsx -o site-unique --unique
+          if grep -rlE 'https?://' site site-unique; then
             echo "::error::Les pages produites contiennent une adresse réseau"; exit 1
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["packages", "app/src", "e2e", "exemples", "vite.config.ts"]
+  "include": ["packages", "app/src", "e2e", "vite.config.ts"]
 }

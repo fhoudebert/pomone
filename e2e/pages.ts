@@ -3,15 +3,24 @@
  * impression. Utilise le Chrome installé (CHROME_PATH pour un autre chemin) : npm run test:e2e
  */
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AxeBuilder } from '@axe-core/playwright';
 import { chromium, type Page } from 'playwright-core';
-import { genererSite, lireClasseur } from '../packages/core/src/index';
+import { genererSite } from '../packages/core/src/index';
+import { actifs, arbreAvecFiche, lireExemple } from '../packages/core/test/exemple';
 
-const { verger, rapport } = lireClasseur(new Uint8Array(readFileSync('exemples/verger-pomone-v1.xlsx')));
+const lecture = lireExemple();
+const { verger, rapport } = lecture;
+// Identifiants et effectifs tirés du classeur : les essais suivent les évolutions du verger.
+const plantes = actifs(lecture);
+const cv = new Map(verger.cultivars.map((c) => [c.id, c]));
+const { e: arbre, c: variete } = arbreAvecFiche(lecture);
+const parEspece = (espece: string) => plantes.filter((e) => cv.get(e.cultivar)?.espece === espece).length;
+const especeLaPlusPlantee = [...new Set(verger.cultivars.map((c) => c.espece))].sort((a, b) => parEspece(b) - parEspece(a))[0]!;
+const premierDe = (cultivar: string) => plantes.find((e) => e.cultivar === cultivar)!.id;
 verger.decorations.push({ id: 'pe1', type: 'point_eau', x: -3, y: 4, largeur: null, hauteur: null, rayon: 1, points: [], libelle: 'Robinet' });
 const dossier = mkdtempSync(join(tmpdir(), 'pomone-'));
 const ecrire = (sous: string, o: Parameters<typeof genererSite>[1]) => {
@@ -47,42 +56,50 @@ async function axe(p: Page, nom: string): Promise<void> {
 
 await etape('plan : fiche au clic, adresse stable, fermeture par Échap', async () => {
   const p = await ouvrirPage('site/index.html');
-  await p.click('[data-fiche="A7-009"]');
-  assert.match(await p.textContent('#panneau h2') ?? '', /Reinette Dorée de Vitry/);
-  assert.match(p.url(), /#A7-009$/);
+  await p.click(`[data-fiche="${arbre.id}"]`);
+  assert.ok((await p.textContent('#panneau h2') ?? '').includes(variete.cultivar.v));
+  assert.ok(p.url().endsWith(`#${arbre.id}`), p.url());
   await p.keyboard.press('Escape');
   assert.equal(await p.isVisible('#panneau'), false);
   assert.doesNotMatch(p.url(), /#/);
 });
 await etape('plan : parcours au clavier', async () => {
   const p = await ouvrirPage('site/index.html');
-  await p.focus('[data-fiche="A1-001"]');
+  await p.focus(`[data-fiche="${plantes[0]!.id}"]`);
   await p.keyboard.press('Enter');
   assert.equal(await p.isVisible('#panneau'), true);
   assert.equal(await p.evaluate(() => document.activeElement?.className), 'fermer');
   await p.keyboard.press('Escape');
-  assert.equal(await p.evaluate(() => document.activeElement?.getAttribute('data-fiche')), 'A1-001', 'le focus revient sur l’arbre');
+  assert.equal(await p.evaluate(() => document.activeElement?.getAttribute('data-fiche')), plantes[0]!.id, 'le focus revient sur l’arbre');
 });
 await etape('plan : recherche, filtre par espèce, pollinisateurs', async () => {
   const p = await ouvrirPage('site/index.html');
-  await p.fill('#recherche', 'reine claude');
-  assert.equal(await p.locator('.plante:not(.estompe)').count(), 6);
+  await p.fill('#recherche', arbre.id.toLowerCase());
+  assert.deepEqual(await p.locator('.plante:not(.estompe)').evaluateAll((l) => l.map((x) => x.getAttribute('data-fiche'))), [arbre.id]);
   await p.fill('#recherche', '');
-  await p.selectOption('#filtre-espece', 'figuier');
-  assert.equal(await p.locator('.plante:not(.estompe)').count(), 4);
+  await p.selectOption('#filtre-espece', especeLaPlusPlantee);
+  assert.equal(await p.locator('.plante:not(.estompe)').count(), parEspece(especeLaPlusPlantee));
   await p.selectOption('#filtre-espece', '');
-  await p.click('[data-fiche="A5-011"]');
-  await p.click('#panneau button.voir');
-  assert.equal(await p.locator('.plante:not(.estompe)').count(), 2);
+  // Premier arbre dont la fiche propose des pollinisateurs présents dans le verger.
+  const avecPollinisateurs = await p.evaluate(() => [...document.querySelectorAll('template[id^="fiche-"]')]
+    .find((t) => (t as HTMLTemplateElement).content.querySelector('button.voir'))?.id.slice('fiche-'.length));
+  if (avecPollinisateurs) {
+    await p.click(`[data-fiche="${avecPollinisateurs}"]`);
+    const voir = (await p.getAttribute('#panneau button.voir', 'data-voir'))!.split(' ');
+    await p.click('#panneau button.voir');
+    const allumes = await p.locator('.plante:not(.estompe)').evaluateAll((l) => l.map((x) => x.getAttribute('data-cultivar')));
+    assert.ok(allumes.length >= 2 && allumes.every((c) => voir.includes(c!)), allumes.join(', '));
+  }
 });
 await etape('liens entre pages en file://', async () => {
-  const p = await ouvrirPage('site/cultivars/pommier-melrose.html');
+  const p = await ouvrirPage(`site/cultivars/${variete.id}.html`);
   await p.click('main ul a');
   await p.waitForSelector('#panneau:not([hidden])');
-  assert.match(p.url(), /index\.html#A7-010$/);
+  assert.ok(p.url().endsWith(`index.html#${premierDe(variete.id)}`), p.url());
+  const derniere = verger.allees.at(-1)!;
   await p.goto(url('site/index.html'));
-  await p.click('svg.plan a >> nth=4');
-  assert.match(await p.textContent('h1') ?? '', /Allée 5/);
+  await p.click(`svg.plan a >> nth=${verger.allees.length - 1}`);
+  assert.ok((await p.textContent('h1') ?? '').startsWith(`Allée ${derniere.numero}`));
 });
 await etape('catalogue : tri par colonne', async () => {
   const p = await ouvrirPage('site/catalogue.html');
@@ -93,15 +110,15 @@ await etape('catalogue : tri par colonne', async () => {
   assert.notEqual(await premier(), a);
 });
 await etape('fichier unique : fiche par ancre, téléphone', async () => {
-  const p = await ouvrirPage('unique/verger.html#A1-003', 390);
+  const p = await ouvrirPage(`unique/verger.html#${plantes[2]!.id}`, 390);
   assert.equal(await p.isVisible('#panneau'), true);
   assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'pas de défilement horizontal de la page');
 });
-for (const [nom, chemin] of [['plan', 'site/index.html'], ['allée', 'site/allees/A6.html'], ['cultivar', 'site/cultivars/poirier-conference.html'],
+for (const [nom, chemin] of [['plan', 'site/index.html'], ...verger.allees.map((a) => [`allée ${a.numero}`, `site/allees/${a.id}.html`]), ['cultivar', `site/cultivars/${variete.id}.html`],
   ['catalogue', 'site/catalogue.html'], ['rapport', 'site/rapport.html'], ['fichier unique', 'unique/verger.html']] as const)
   await etape(`accessibilité : ${nom}`, async () => axe(await ouvrirPage(chemin), nom));
 await etape('accessibilité : fiche ouverte', async () => {
-  const p = await ouvrirPage('site/index.html#A6-004');
+  const p = await ouvrirPage(`site/index.html#${arbre.id}`);
   await axe(p, 'fiche');
 });
 await etape('impression : le plan tient sur une page A4 paysage', async () => {
