@@ -26,6 +26,7 @@ Le détail des feuilles et des colonnes est dans [format-pomone-v1.md](format-po
 | Compléter une fiche | Colonnes de `cultivars` ; toute colonne ajoutée à droite s'affiche dans la fiche |
 | Noter une idée | Feuille `idees`, avec l'allée concernée (ou vide pour tout le verger) |
 | Placer un point d'eau, une ruche… | Feuille `decorations`, coordonnées en mètres |
+| Ajouter une haie | Ligne dans `allees` avec `type` = `haie` et `cote` = `haut`, `bas`, `gauche` ou `droite` ; elle se place à 10 m des allées, ou à `distance_m` |
 | Orienter le plan | `nord_deg` dans la feuille `verger` : angle des allées par rapport au nord |
 
 ### Les ébauches
@@ -69,5 +70,4 @@ L'application n'est pas signée. Au premier lancement :
 
 ## Licence
 
-Pomone est un logiciel libre sous licence MIT. Son logo est sous licence CC BY-NC-SA 3.0
-(voir `LOGO-LICENCE.md`). Les données de votre verger vous appartiennent.
+Pomone est un logiciel libre sous licence MIT. Son logo est sous licence CC BY-NC-SA 3.0. Les données de votre verger vous appartiennent.

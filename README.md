@@ -7,7 +7,7 @@ consultables hors ligne : un plan vu de dessus, allée par allée, et la fiche d
   (ou le classeur « ébauche » d'origine, converti à la volée).
 - **Sortie** : un dossier de pages HTML, ou un seul fichier `verger.html`, sans aucun appel réseau.
 - **Application de bureau** Linux, Windows et macOS (Tauri 2) et **ligne de commande**.
-- Licence MIT (logo : CC BY-NC-SA 3.0).
+- Licence MIT.
 
 ## Utiliser l'application
 
@@ -22,8 +22,8 @@ Les binaires ne sont pas signés : au premier lancement, Windows (SmartScreen) e
 
 ```sh
 npm ci
-npm run pomone -- build exemples/verger-pomone-v1.xlsx -o site          # dossier de pages
-npm run pomone -- build exemples/verger-pomone-v1.xlsx -o site --unique # un seul verger.html
+npm run pomone -- build exemples/verger-arboretum.xlsx -o site          # dossier de pages
+npm run pomone -- build exemples/verger-arboretum.xlsx -o site --unique # un seul verger.html
 npm run pomone -- modele -o mon-verger.xlsx                             # classeur vierge
 ```
 
@@ -37,7 +37,7 @@ Mode d'emploi complet : [docs/guide-utilisateur.md](docs/guide-utilisateur.md).
 | Feuille | Contenu |
 | --- | --- |
 | `verger` | nom, lieu, `nord_deg` (azimut des allées), écart entre allées |
-| `allees` | une ligne par allée ; les allées sont toujours dessinées verticales |
+| `allees` | une ligne par allée, toujours dessinée verticale, ou par haie, posée sur un côté des allées |
 | `emplacements` | une ligne par plante : identifiant fixe, allée, position (`1`, `2`, `1.1`…), cultivar, statut |
 | `cultivars` | nom latin, cultivar, nom vernaculaire, multiplication, description, colonnes libres |
 | `idees` | idées par allée : remplacement, évolution, plante intercalaire |
@@ -63,7 +63,7 @@ npm run tauri dev   # application de bureau (Rust et dépendances Tauri requis)
 | `packages/cli` | ligne de commande |
 | `app` | interface de l'application |
 | `src-tauri` | hôte Tauri (Rust) : dialogues et écriture des fichiers |
-| `exemples` | classeur d'origine, classeur au format v1, modèle vierge |
+| `exemples` | verger de l'arboretum (`verger-arboretum.xlsx`), modèle vierge |
 | `e2e`, `outils` | essais en navigateur, contrôle des licences |
 
 Le build des binaires se lance à la main (GitHub Actions, `workflow_dispatch`) ; les
@@ -71,6 +71,5 @@ contributions arrivent par séries de patchs : voir [docs/contribuer.md](docs/co
 
 ## Licence
 
-Code, documentation et exemples : MIT 
-Logo et icônes :CC BY-NC-SA 3.0, voir [LOGO-LICENCE.md](LOGO-LICENCE.md).
+Code, documentation et exemples : MIT.
 Dépendances : voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

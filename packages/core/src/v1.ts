@@ -2,7 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type * as XLSX from 'xlsx';
 import { devinerEspece, especeParCle } from './especes';
 import { ecrireChamp, lireChamp, nombre, plat, slug } from './normaliser';
-import { type Anomalie, type Cultivar, type Verger, MODES_MULTIPLICATION, STATUTS, STRATES, TYPES_IDEE, champ } from './types';
+import { type Anomalie, type Cultivar, type Verger, COTES, DISTANCE_HAIE, MODES_MULTIPLICATION, STATUTS, STRATES, TYPES_IDEE, TYPES_RANG, champ } from './types';
 import { ECART_ALLEES_PROVISOIRE, ESPACEMENT_PROVISOIRE, idCultivar } from './ebauche';
 
 type Ligne = Record<string, unknown>;
@@ -17,6 +17,7 @@ const AIDE = [
   'Ébauche : une valeur qui commence par ~ est une proposition à valider. Elle apparaît en italique couleur ici et dans les pages. Pour valider, retirer le ~.',
   'verger : nord_deg = azimut des allées en degrés depuis le nord (sens horaire) ; ecart_allees_m = distance entre deux allées.',
   'allees : une ligne par allée, dans l\'ordre du plan. espacement_defaut_m = distance entre deux arbres quand elle n\'est pas saisie.',
+  `allees : type = allée (par défaut) ou haie. Une haie se place sur un côté (cote = ${COTES.join(', ')}) ; distance_m = distance au bout des allées (haut, bas) ou à l'allée voisine (gauche, droite), ${DISTANCE_HAIE} m par défaut.`,
   'emplacements : une ligne par plante. id attribué une fois, jamais réutilisé (A5-007). position : 1, 2… et 1.1 pour insérer entre 1 et 2 (colonne au format texte).',
   `emplacements.statut : ${STATUTS.join(', ')}. Une plante « à planter » peut rester sans cultivar.`,
   `emplacements.strate : ${STRATES.join(', ')}.`,
@@ -27,9 +28,12 @@ const AIDE = [
   'decorations : x_m vers la droite, y_m vers le bas, en mètres depuis le coin haut gauche de la première allée. Types : point_eau, mare, ruche, composteur, banc, abri, chemin, haie, cloture, texte.',
   'Cette feuille « aide » n\'est pas lue par Pomone.',
 ];
+/** « Haie », « haies », vide → forme de la liste ; une autre valeur est gardée telle quelle pour le rapport. */
+const typeRang = (t: string): string => (!t || /^allees?$/.test(plat(t)) ? 'allée' : /^haies?$/.test(plat(t)) ? 'haie' : t);
 const liste = (v: readonly string[]): string => `"${v.join(',')}"`;
 /** Listes déroulantes proposées (sans blocage : une ébauche « ~bouture » reste admise). */
 const LISTES: Record<number, [string, string][]> = {
+  2: [['E', liste(TYPES_RANG)], ['F', liste(COTES)]],
   3: [['E', liste(STATUTS)], ['F', liste(STRATES)], ['K', liste(MODES_MULTIPLICATION)]],
   4: [['F', liste(MODES_MULTIPLICATION)]],
   5: [['B', liste(TYPES_IDEE)]],
@@ -75,6 +79,8 @@ export function lireV1(X: typeof XLSX, wb: XLSX.WorkBook): { verger: Verger; rap
     allees: feuille('allees').lignes.map((l, i) => ({
       id: txt(l.id) || `A${i + 1}`, numero: nombre(l.numero) ?? i + 1, nom: txt(l.nom),
       espacementDefaut: txt(l.espacement_defaut_m) ? lireChamp(l.espacement_defaut_m) : champ(String(ESPACEMENT_PROVISOIRE), true),
+      type: typeRang(txt(l.type)), cote: plat(txt(l.cote)),
+      distance: txt(l.distance_m) ? lireChamp(l.distance_m) : null,
     })),
     emplacements: feuille('emplacements').lignes.map((l) => {
       const c = parId.get(txt(l.cultivar));
@@ -112,7 +118,8 @@ export function ecrireV1(X: typeof XLSX, v: Verger): Uint8Array {
     X.utils.book_append_sheet(wb, ws, nom);
   };
   ajouter('verger', [['cle', 'valeur'], ['nom', v.nom], ['lieu', v.lieu], ['auteur', v.auteur], ['nord_deg', v.nordDeg], ['ecart_allees_m', ecrireChamp(v.ecartAllees)]]);
-  ajouter('allees', [['id', 'numero', 'nom', 'espacement_defaut_m'], ...v.allees.map((a) => [a.id, a.numero, a.nom, ecrireChamp(a.espacementDefaut)])]);
+  ajouter('allees', [['id', 'numero', 'nom', 'espacement_defaut_m', 'type', 'cote', 'distance_m'],
+    ...v.allees.map((a) => [a.id, a.numero, a.nom, ecrireChamp(a.espacementDefaut), a.type, a.type === 'haie' ? a.cote : '', ecrireChamp(a.distance)])]);
   ajouter('emplacements', [
     ['id', 'allee', 'position', 'cultivar', 'statut', 'strate', 'espacement_precedent_m', 'date_plantation', 'date_retrait', 'remplace', 'multiplication', 'porte_greffe', 'origine', 'remarque'],
     ...v.emplacements.map((e) => [e.id, e.allee, e.position, e.cultivar, e.statut, e.strate, ecrireChamp(e.espacement), e.datePlantation, e.dateRetrait, e.remplace,

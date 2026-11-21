@@ -10,7 +10,7 @@ Pomone est distribué sous licence MIT. Il embarque ou utilise :
 | serde, serde_json | MIT ou Apache-2.0 | échanges entre l'interface et Rust |
 
 Les pages HTML produites n'embarquent aucune dépendance tierce.
-Le logo Pomone n'est pas sous MIT : CC BY-NC-SA 3.0, voir [LOGO-LICENCE.md](LOGO-LICENCE.md).
+Le logo Pomone n'est pas sous MIT : CC BY-NC-SA 3.0.
 
 `npm run licences` contrôle toutes les dépendances distribuées (npm et crates Rust). Licences
 admises : MIT, Apache-2.0, BSD, ISC, Zlib, Unicode, CC0, BSL-1.0, et MPL-2.0 (copyleft limité

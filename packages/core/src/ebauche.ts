@@ -113,7 +113,7 @@ export function lireEbauche(X: typeof XLSX, wb: XLSX.WorkBook): { verger: Verger
     while (fin > 0 && !cellules[fin - 1]!.nom) fin--;
     const espAllee = cellules.find((c) => c.esp !== null)?.esp ?? null;
     if (espAllee === null) note('info', 'espacement', `Allée ${numero} : aucun espacement saisi, ${ESPACEMENT_PROVISOIRE} m proposés (à vérifier).`);
-    allees.push({ id, numero, nom, espacementDefaut: champ(String(espAllee ?? ESPACEMENT_PROVISOIRE), true) });
+    allees.push({ id, numero, nom, espacementDefaut: champ(String(espAllee ?? ESPACEMENT_PROVISOIRE), true), type: 'allée', cote: '', distance: null });
 
     cellules.slice(0, fin).forEach((c, i) => {
       const base = {
